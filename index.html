@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Textaufgaben</title>
+  <style>
+    :root{
+      --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb;
+      --accent:#2563eb; --ok:#16a34a; --bad:#dc2626;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:14px;}
+    .app{width:min(980px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.10);padding:16px;}
+    header{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px;}
+    h1{margin:0;font-size:1.3rem}
+    .grid{display:grid;grid-template-columns: 1fr 340px;gap:14px;}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px;}
+    .menu{display:grid;gap:12px;grid-template-columns: 1fr 1fr;}
+    @media (max-width:650px){.menu{grid-template-columns:1fr}}
+    .menuBtn{
+      display:flex;flex-direction:column;gap:6px;
+      padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff;
+      cursor:pointer;text-align:left;
+    }
+    .menuBtn:hover{border-color:#cbd5e1}
+    .menuBtn:active{transform:translateY(1px)}
+    .menuBtn b{font-size:1.05rem}
+    .menuBtn span{color:var(--muted);font-weight:800;line-height:1.25}
+    .badgeRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .badge{border:1px solid var(--line);background:#fafafa;border-radius:999px;padding:6px 8px;color:var(--muted);font-weight:900;font-size:.9rem}
+    .badge.done{border-color:rgba(22,163,74,.35);background:rgba(22,163,74,.08);color:var(--ok)}
+
+    .topControls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .pillRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{border:1px solid var(--line);background:#fafafa;border-radius:999px;padding:8px 10px;font-size:.92rem;color:var(--muted);font-weight:900}
+    .pill b{color:var(--text)}
+    label{font-weight:950}
+    button, select, input{
+      border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);
+      padding:10px 12px;font-weight:950;
+    }
+    button{cursor:pointer;user-select:none}
+    button:hover{border-color:#cbd5e1}
+    button:active{transform:translateY(1px)}
+    .primary{border-color:transparent;background:var(--accent);color:#fff}
+    .primary:hover{filter:brightness(.95)}
+    .ghost{background:#f9fafb}
+
+    .taskBox{border:1px dashed var(--line);background:#fbfbfb;border-radius:16px;padding:12px;margin-bottom:12px;}
+    .taskTitle{font-weight:1000;margin:0 0 6px;font-size:1rem}
+    .taskText{margin:0;font-size:1.2rem;line-height:1.35}
+    .termLine{margin-top:10px;font-weight:1000;font-size:1.12rem}
+    .muted{color:var(--muted);font-weight:900}
+
+    .answerRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+    input[type="number"]{
+      width:220px; max-width:100%;
+      font-size:1.1rem; font-weight:1000; padding:12px 12px;
+      outline:none;
+    }
+    input[type="number"]:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+
+    .choices{display:grid;gap:10px;margin-top:10px;}
+    .choice{
+      display:flex;gap:10px;align-items:flex-start;
+      border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:#fff;
+      cursor:pointer;
+    }
+    .choice:hover{border-color:#cbd5e1}
+    .choice input{margin-top:3px}
+    .choice span{font-weight:950;line-height:1.3}
+
+    .status{
+      margin-top:12px;border:1px solid var(--line);border-radius:14px;background:#fafafa;
+      padding:10px 12px;display:none;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;
+    }
+    .status.ok{border-color:rgba(22,163,74,.35);background:rgba(22,163,74,.08)}
+    .status.bad{border-color:rgba(220,38,38,.35);background:rgba(220,38,38,.08)}
+    .status .msg{font-weight:1100}
+    .status.ok .msg{color:var(--ok)}
+    .status.bad .msg{color:var(--bad)}
+    .status .detail{color:var(--muted);font-size:.92rem;font-weight:900}
+
+    .side h2{margin:0 0 10px;font-size:1.05rem}
+    .side p{margin:8px 0;color:var(--muted);font-weight:900;line-height:1.35}
+    .hr{height:1px;background:var(--line);margin:12px 0}
+
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header><div><h1>Textaufgaben</h1></div></header>
+
+    <section id="startMenu">
+      <div class="grid">
+        <section class="card">
+          <div class="menu">
+            <button class="menuBtn" id="btnCatA" type="button">
+              <b>a) Text → Ergebnis</b>
+              <span>Du liest eine Textaufgabe und rechnest das Ergebnis aus.</span>
+              <div class="badgeRow"><span class="badge" id="badgeA">offen</span></div>
+            </button>
+
+            <button class="menuBtn" id="btnCatB" type="button">
+              <b>b) Text → Term (MC)</b>
+              <span>Du liest eine Textaufgabe und wählst den passenden Term.</span>
+              <div class="badgeRow"><span class="badge" id="badgeB">offen</span></div>
+            </button>
+
+            <button class="menuBtn" id="btnCatC" type="button">
+              <b>c) Term → Text (MC)</b>
+              <span>Du siehst einen Term und wählst die passende Textaufgabe.</span>
+              <div class="badgeRow"><span class="badge" id="badgeC">offen</span></div>
+            </button>
+
+            <button class="menuBtn ghost" id="btnResetAll" type="button">
+              <b>Zurücksetzen</b>
+              <span>Alle Kategorien wieder auf „offen“ setzen.</span>
+              <div class="badgeRow"><span class="badge">Reset</span></div>
+            </button>
+          </div>
+        </section>
+
+        <aside class="card side">
+          <h2>Ziel</h2>
+          <p>In jeder Kategorie musst du <b>10 Aufgaben richtig</b> lösen.</p>
+          <p>Falsche Antworten zählen nicht – du musst korrigieren.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="game" class="hidden">
+      <div class="grid">
+        <section class="card">
+          <div class="topControls">
+            <div class="pillRow">
+              <div class="pill">Kategorie: <b id="catName">—</b></div>
+              <div class="pill">Richtig: <b id="ok">0</b>/10</div>
+              <div class="pill">Falsch: <b id="bad">0</b></div>
+            </div>
+            <div class="pillRow">
+              <label for="op">Rechenart</label>
+              <select id="op">
+                <option value="mix" selected>gemischt</option>
+                <option value="add">Addition</option>
+                <option value="sub">Subtraktion</option>
+                <option value="mul">Multiplikation</option>
+                <option value="div">Division</option>
+              </select>
+              <button class="ghost" id="backToMenu" type="button">Menü</button>
+            </div>
+          </div>
+
+          <div class="taskBox">
+            <p class="taskTitle">Aufgabe</p>
+            <p class="taskText" id="promptText">—</p>
+            <div class="termLine" id="termLine" style="display:none">—</div>
+          </div>
+
+          <div id="areaA" class="hidden">
+            <div class="answerRow">
+              <label for="ansA" class="muted">Ergebnis</label>
+              <input id="ansA" type="number" inputmode="numeric" />
+              <button class="primary" id="checkA" type="button">Prüfen</button>
+            </div>
+          </div>
+
+          <div id="areaMC" class="hidden">
+            <div class="choices" id="choices"></div>
+            <div class="answerRow">
+              <button class="primary" id="checkMC" type="button">Prüfen</button>
+            </div>
+          </div>
+
+          <div id="status" class="status" aria-live="polite"></div>
+        </section>
+
+        <aside class="card side">
+          <h2>Hinweis</h2>
+          <p>Nur richtige Aufgaben zählen.</p>
+          <p>Du brauchst <b>10 richtige</b>, dann geht’s zurück ins Menü.</p>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const sfx = {
+      correct: new Audio("audio/correct.wav"),
+      error: new Audio("audio/error.wav"),
+    };
+
+    const GOAL = 10;
+    const FEEDBACK_MS = 1000;
+
+    const startMenu = document.getElementById("startMenu");
+    const game = document.getElementById("game");
+
+    const btnCatA = document.getElementById("btnCatA");
+    const btnCatB = document.getElementById("btnCatB");
+    const btnCatC = document.getElementById("btnCatC");
+    const btnResetAll = document.getElementById("btnResetAll");
+
+    const badgeA = document.getElementById("badgeA");
+    const badgeB = document.getElementById("badgeB");
+    const badgeC = document.getElementById("badgeC");
+
+    const elCatName = document.getElementById("catName");
+    const elOp = document.getElementById("op");
+    const btnBackToMenu = document.getElementById("backToMenu");
+
+    const elPromptText = document.getElementById("promptText");
+    const elTermLine = document.getElementById("termLine");
+
+    const areaA = document.getElementById("areaA");
+    const areaMC = document.getElementById("areaMC");
+
+    const ansA = document.getElementById("ansA");
+    const btnCheckA = document.getElementById("checkA");
+
+    const elChoices = document.getElementById("choices");
+    const btnCheckMC = document.getElementById("checkMC");
+
+    const elStatus = document.getElementById("status");
+    const elOk = document.getElementById("ok");
+    const elBad = document.getElementById("bad");
+
+    const progress = { a:{done:false}, b:{done:false}, c:{done:false} };
+
+    const state = {
+      category: null,
+      ok: 0,
+      bad: 0,
+      current: null,
+      lock: false
+    };
+
+    function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+    function shuffle(arr){
+      const a = arr.slice();
+      for (let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]] = [a[j],a[i]];
+      }
+      return a;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[c]));
+    }
+    function setStatus(kind, msg, detail=""){
+      elStatus.style.display = "flex";
+      elStatus.className = "status " + (kind === "ok" ? "ok" : "bad");
+      elStatus.innerHTML = `
+        <div class="msg">${escapeHtml(msg)}</div>
+        <div class="detail">${escapeHtml(detail)}</div>
+      `;
+    }
+    function clearStatus(){
+      elStatus.style.display = "none";
+      elStatus.className = "status";
+      elStatus.textContent = "";
+    }
+    async function play(sound){
+      try{ sound.currentTime = 0; await sound.play(); }catch(_){}
+    }
+
+    function setBadge(el, done){
+      el.textContent = done ? "fertig" : "offen";
+      el.className = "badge" + (done ? " done" : "");
+    }
+    function updateBadges(){
+      setBadge(badgeA, progress.a.done);
+      setBadge(badgeB, progress.b.done);
+      setBadge(badgeC, progress.c.done);
+    }
+    function updateGameStats(){
+      elOk.textContent = String(state.ok);
+      elBad.textContent = String(state.bad);
+    }
+
+    function showMenu(){
+      startMenu.classList.remove("hidden");
+      game.classList.add("hidden");
+      clearStatus();
+      updateBadges();
+      state.lock = false;
+    }
+    function showGame(){
+      startMenu.classList.add("hidden");
+      game.classList.remove("hidden");
+      clearStatus();
+      state.lock = false;
+    }
+
+    function catLabel(cat){
+      if (cat === "a") return "a) Text → Ergebnis";
+      if (cat === "b") return "b) Text → Term (MC)";
+      return "c) Term → Text (MC)";
+    }
+
+    function sendAppSolved(){
+      const payloads = [
+        "appSolved",
+        { type: "appSolved" },
+        { event: "appSolved" },
+        { source: "learningview", event: "appSolved", solved: true },
+        { name: "appSolved", value: 1 },
+      ];
+      try{ payloads.forEach(p => window.parent?.postMessage(p, "*")); }catch(_){}
+      try{ payloads.forEach(p => window.top?.postMessage(p, "*")); }catch(_){}
+    }
+
+    function pickOp(){
+      const choice = elOp.value;
+      if (choice !== "mix") return choice;
+      const ops = ["add","sub","mul","div"];
+      return ops[randInt(0, ops.length-1)];
+    }
+    function allowedOps(){
+      const choice = elOp.value;
+      if (choice === "mix") return ["add","sub","mul","div"];
+      return [choice];
+    }
+
+    // constraints:
+    // add/sub result >= 10
+    // mul/div within 1..10 and 10x table; no factor 0
+    // all results and intermediate results: 10..100 (keeps it not too easy + integer)
+    const MINV = 10, MAXV = 100;
+
+    function genAdd(){
+      const result = randInt(MINV, MAXV);
+      const a = randInt(1, result - 1);
+      const b = result - a;
+      return {a, b, result};
+    }
+
+    function genSub(){
+      const result = randInt(MINV, MAXV);
+      const b = randInt(1, 90);
+      const a = b + result;
+      if (a > MAXV) return genSub();
+      return {a, b, result};
+    }
+
+    function genMul(){
+      const ten = Math.random() < 0.35;
+      let a, b;
+      if (ten){
+        a = 10;
+        b = randInt(1, 10);
+      } else {
+        a = randInt(1, 10);
+        b = randInt(1, 10);
+      }
+      const result = a * b;
+      if (result < MINV || result > MAXV) return genMul();
+      return {a, b, result};
+    }
+
+    function genDiv(){
+      const m = genMul();
+      let divisor = m.b;
+      let quotient = m.a;
+      if (Math.random() < 0.5){
+        divisor = m.a;
+        quotient = m.b;
+      }
+      const a = m.result;
+      const b = divisor;
+      const result = quotient;
+      if (result < MINV || result > MAXV) return genDiv();
+      return {a, b, result};
+    }
+
+    function genAdd2to4(){
+      const count = randInt(2,4);
+      const target = randInt(MINV, MAXV);
+      const nums = [];
+      let remaining = target;
+
+      for (let i=0;i<count;i++){
+        const left = count - i;
+        if (left === 1){
+          nums.push(remaining);
+          remaining = 0;
+        } else {
+          const maxHere = remaining - (left - 1);
+          const n = randInt(1, Math.min(50, maxHere));
+          nums.push(n);
+          remaining -= n;
+        }
+      }
+      if (nums.some(n => n <= 0) || nums.reduce((s,n)=>s+n,0) !== target) return genAdd2to4();
+      return { nums, result: target };
+    }
+
+    // ---- Language (TEXT ONLY, no operator signs) ----
+    const textOnly = {
+      add: [
+        ({a,b}) => `Addiere ${a} und ${b}.`,
+        ({a,b}) => `Bilde die Summe aus den Zahlen ${a} und ${b}.`,
+        ({a,b}) => `Berechne die Summe von ${a} und ${b}.`,
+        ({a,b}) => `Addiere ${a} zur Zahl ${b}.`,
+        ({a,b}) => `Zähle zur Zahl ${a} die Zahl ${b} hinzu.`,
+        ({a,b}) => `Erhöhe den Wert der Zahl ${a} um ${b}.`
+      ],
+      addLong: [
+        ({nums}) => `Bilde die Summe aus den Zahlen ${nums.join(", ").replace(/, ([^,]*)$/, " und $1")}.`,
+        ({nums}) => `Berechne die Summe aus den Zahlen ${nums.join(", ").replace(/, ([^,]*)$/, " und $1")}.`,
+        ({nums}) => `Addiere ${nums.join(", ").replace(/, ([^,]*)$/, " und $1")}.`
+      ],
+      sub: [
+        ({a,b}) => `Subtrahiere ${b} von ${a}.`,
+        ({a,b}) => `Berechne die Differenz von ${a} und ${b}.`,
+        ({a,b}) => `Ziehe ${b} von ${a} ab.`,
+        ({a,b}) => `Verringere ${a} um ${b}.`,
+        ({a,b}) => `Reduziere ${a} um ${b}.`
+      ],
+      mul: [
+        ({a,b}) => `Multipliziere ${a} mit ${b}.`,
+        ({a,b}) => `Berechne das Produkt von ${a} und ${b}.`,
+        ({a,b}) => `Bestimme das Produkt von ${a} und ${b}.`,
+        ({a,b}) => `Vervielfache ${a} mit ${b}.`,
+        ({a,b}) => `Berechne ${a} mal ${b}.`
+      ],
+      div: [
+        ({a,b}) => `Dividiere ${a} durch ${b}.`,
+        ({a,b}) => `Berechne den Quotienten von ${a} und ${b}.`,
+        ({a,b}) => `Bestimme den Quotienten von ${a} und ${b}.`,
+        ({a,b}) => `Teile ${a} durch ${b}.`,
+        ({a,b}) => `Wie oft passt ${b} in ${a}?`
+      ]
+    };
+
+    const opSymbols = { add:"+", sub:"−", mul:"·", div:":" };
+
+    function genBinary(op){
+      if (op === "add") return genAdd();
+      if (op === "sub") return genSub();
+      if (op === "mul") return genMul();
+      return genDiv();
+    }
+
+    // ---- Chained calculations ----
+    // chain = { start:number, steps:[{op, n}], result:number, term:string, text:string }
+    function applyStep(v, step){
+      if (step.op === "add") return v + step.n;
+      if (step.op === "sub") return v - step.n;
+      if (step.op === "mul") return v * step.n;
+      return v / step.n;
+    }
+
+    function pickOperandForStep(v, op){
+      if (op === "add"){
+        const maxN = MAXV - v;
+        if (maxN < 1) return null;
+        const n = randInt(1, Math.min(50, maxN));
+        const nv = v + n;
+        if (nv < MINV || nv > MAXV) return null;
+        return { n, nv };
+      }
+      if (op === "sub"){
+        const maxN = v - MINV;
+        if (maxN < 1) return null;
+        const n = randInt(1, Math.min(50, maxN));
+        const nv = v - n;
+        if (nv < MINV || nv > MAXV) return null;
+        return { n, nv };
+      }
+      if (op === "mul"){
+        // Einmaleins & Zehnereinmaleins as factor
+        const factors = [2,3,4,5,6,7,8,9,10];
+        const f = factors[randInt(0, factors.length-1)];
+        const nv = v * f;
+        if (nv < MINV || nv > MAXV) return null;
+        return { n:f, nv };
+      }
+      // div
+      // divisor 2..10, must divide v, quotient within range
+      const divisors = [2,3,4,5,6,7,8,9,10];
+      const candidates = divisors.filter(d => v % d === 0);
+      if (!candidates.length) return null;
+      const d = candidates[randInt(0, candidates.length-1)];
+      const nv = v / d;
+      if (nv < MINV || nv > MAXV) return null;
+      return { n:d, nv };
+    }
+
+    function chainToTerm(start, steps){
+      let expr = String(start);
+      for (const st of steps){
+        expr = `(${expr} ${opSymbols[st.op]} ${st.n})`;
+      }
+      return expr;
+    }
+
+    function sentenceForStep(prev, op, n, isFirst){
+      const variants = [];
+      if (op === "add"){
+        variants.push(isFirst ? `Addiere ${n} zur Zahl ${prev}.` : `Addiere danach ${n}.`);
+        variants.push(isFirst ? `Zähle zur Zahl ${prev} die Zahl ${n} hinzu.` : `Zähle danach ${n} hinzu.`);
+        variants.push(isFirst ? `Erhöhe den Wert der Zahl ${prev} um ${n}.` : `Erhöhe danach um ${n}.`);
+        variants.push(isFirst ? `Berechne zuerst die Summe von ${prev} und ${n}.` : `Berechne danach die Summe mit ${n}.`);
+      } else if (op === "sub"){
+        variants.push(isFirst ? `Subtrahiere ${n} von ${prev}.` : `Subtrahiere danach ${n}.`);
+        variants.push(isFirst ? `Ziehe ${n} von ${prev} ab.` : `Ziehe danach ${n} ab.`);
+        variants.push(isFirst ? `Verringere ${prev} um ${n}.` : `Verringere danach um ${n}.`);
+        variants.push(isFirst ? `Berechne zuerst die Differenz von ${prev} und ${n}.` : `Berechne danach die Differenz mit ${n}.`);
+      } else if (op === "mul"){
+        variants.push(isFirst ? `Multipliziere ${prev} mit ${n}.` : `Multipliziere danach mit ${n}.`);
+        variants.push(isFirst ? `Vervielfache ${prev} mit ${n}.` : `Vervielfache danach mit ${n}.`);
+        variants.push(isFirst ? `Berechne zuerst das Produkt von ${prev} und ${n}.` : `Berechne danach das Produkt mit ${n}.`);
+        variants.push(isFirst ? `Berechne ${prev} mal ${n}.` : `Rechne danach mal ${n}.`);
+      } else { // div
+        variants.push(isFirst ? `Dividiere ${prev} durch ${n}.` : `Dividiere danach durch ${n}.`);
+        variants.push(isFirst ? `Teile ${prev} durch ${n}.` : `Teile danach durch ${n}.`);
+        variants.push(isFirst ? `Bestimme den Quotienten von ${prev} und ${n}.` : `Bestimme danach den Quotienten mit ${n}.`);
+        variants.push(isFirst ? `Wie oft passt ${n} in ${prev}?` : `Und danach: Wie oft passt ${n} hinein?`);
+      }
+      return variants[randInt(0, variants.length-1)];
+    }
+
+    function chainToText(start, steps){
+      // One-line or two-part wording, still purely text
+      const style = randInt(1,3);
+      if (style === 1){
+        const parts = [];
+        let prev = start;
+        for (let i=0;i<steps.length;i++){
+          const st = steps[i];
+          parts.push(sentenceForStep(prev, st.op, st.n, i===0));
+          prev = applyStep(prev, st);
+        }
+        return `Rechne Schritt für Schritt: ${parts.join(" ")}`;
+      }
+      if (style === 2){
+        const first = steps[0];
+        return `Starte mit ${start}. ${sentenceForStep(start, first.op, first.n, true)} ${steps.slice(1).map((st,idx)=>{
+          // after first, use "danach" sentences
+          return sentenceForStep(0, st.op, st.n, false);
+        }).join(" ")}`.replace(/\s+/g," ").trim();
+      }
+      // style 3: compact "Zuerst..., dann..., danach..."
+      const words = ["Zuerst", "Dann", "Danach"];
+      let txt = `Starte mit ${start}.`;
+      let prev = start;
+      for (let i=0;i<steps.length;i++){
+        const st = steps[i];
+        const lead = words[Math.min(i, words.length-1)];
+        const v = (i===0)
+          ? sentenceForStep(prev, st.op, st.n, true)
+          : sentenceForStep(prev, st.op, st.n, false);
+        txt += ` ${lead}: ${v}`;
+        prev = applyStep(prev, st);
+      }
+      return txt.replace(/\s+/g," ").trim();
+    }
+
+    function genChain(opsAllowed){
+      // length 2..3
+      const len = (Math.random() < 0.65) ? 2 : 3;
+
+      // choose a start that is "chain-friendly"
+      let start = randInt(MINV, MAXV);
+      // help division: sometimes start as a multiple
+      if (opsAllowed.includes("div") && Math.random() < 0.35){
+        const base = randInt(2,10);
+        const q = randInt(2,10);
+        start = base * q; // 4..100
+        if (start < MINV) start = MINV;
+        if (start > MAXV) start = MAXV;
+      }
+
+      const steps = [];
+      let v = start;
+
+      for (let i=0;i<len;i++){
+        const op = opsAllowed[randInt(0, opsAllowed.length-1)];
+        const pick = pickOperandForStep(v, op);
+        if (!pick) return genChain(opsAllowed); // retry
+        steps.push({ op, n: pick.n });
+        v = pick.nv;
+      }
+
+      const term = chainToTerm(start, steps);
+      const text = chainToText(start, steps);
+      return {
+        isChain: true,
+        start,
+        steps,
+        term,
+        text,
+        result: v
+      };
+    }
+
+    function buildTask(){
+      const opsAllowed = allowedOps();
+
+      // chain probability
+      const wantChain = Math.random() < 0.38;
+
+      if (wantChain){
+        const chain = genChain(opsAllowed);
+        // For B/C we also need (a,b) style fields? not necessary; we use steps/numbers
+        return {
+          isChain: true,
+          op: "chain",
+          text: chain.text,
+          term: chain.term,
+          result: chain.result,
+          start: chain.start,
+          steps: chain.steps
+        };
+      }
+
+      // non-chain
+      const op = pickOp();
+
+      if (state.category === "a"){
+        if (op === "add" && Math.random() < 0.30){
+          const data = genAdd2to4();
+          const t = textOnly.addLong[randInt(0, textOnly.addLong.length-1)]({nums:data.nums});
+          return { isChain:false, op:"add", text:t, result:data.result };
+        }
+        const data = genBinary(op);
+        const tList = textOnly[op];
+        const text = tList[randInt(0, tList.length-1)](data);
+        return { isChain:false, op, text, result:data.result };
+      }
+
+      const data = genBinary(op);
+      const tList = textOnly[op];
+      const text = tList[randInt(0, tList.length-1)](data);
+      const term = `${data.a} ${opSymbols[op]} ${data.b}`;
+      return { isChain:false, op, text, term, result:data.result, a:data.a, b:data.b };
+    }
+
+    function chainToTermFromParts(start, ops, nums){
+      let expr = String(start);
+      for (let i=0;i<ops.length;i++){
+        expr = `(${expr} ${opSymbols[ops[i]]} ${nums[i]})`;
+      }
+      return expr;
+    }
+
+    function makeTermChoicesForB(task){
+      // works for chain and non-chain
+      if (!task.isChain){
+        const ops = ["add","sub","mul","div"].filter(o => o !== task.op);
+        const wrongOps = shuffle(ops).slice(0,3);
+        const correct = `${task.a} ${opSymbols[task.op]} ${task.b}`;
+        const wrongs = wrongOps.map(o => `${task.a} ${opSymbols[o]} ${task.b}`);
+        return shuffle([{label:correct, ok:true}, ...wrongs.map(w => ({label:w, ok:false}))]);
+      }
+
+      const start = task.start;
+      const ops = task.steps.map(s => s.op);
+      const nums = task.steps.map(s => s.n);
+      const correct = task.term;
+
+      const allOps = ["add","sub","mul","div"];
+      const wrongSet = new Set([correct]);
+      const wrongs = [];
+
+      while (wrongs.length < 3){
+        const idx = randInt(0, ops.length-1);
+        const altOps = allOps.filter(o => o !== ops[idx]);
+        const newOp = altOps[randInt(0, altOps.length-1)];
+        const newOps = ops.slice();
+        newOps[idx] = newOp;
+
+        // quick validity check for integer intermediates + range
+        let v = start;
+        let ok = true;
+        for (let i=0;i<newOps.length;i++){
+          const st = { op:newOps[i], n: nums[i] };
+          if (st.op === "div" && (v % st.n !== 0)) { ok = false; break; }
+          v = applyStep(v, st);
+          if (!Number.isInteger(v) || v < MINV || v > MAXV) { ok = false; break; }
+        }
+        if (!ok) continue;
+
+        const cand = chainToTermFromParts(start, newOps, nums);
+        if (!wrongSet.has(cand)){
+          wrongSet.add(cand);
+          wrongs.push(cand);
+        }
+      }
+
+      return shuffle([{label:correct, ok:true}, ...wrongs.map(w => ({label:w, ok:false}))]);
+    }
+
+    function textFromTaskParts(start, ops, nums){
+      // build text but keep it deterministic-ish from parts
+      const steps = ops.map((op,i)=>({op, n: nums[i]}));
+      return chainToText(start, steps);
+    }
+
+    function makeTextChoicesForC(task){
+      // for non-chain: reuse richer text variants but wrong op
+      if (!task.isChain){
+        const correct = textOnly[task.op][randInt(0, textOnly[task.op].length-1)]({a:task.a,b:task.b});
+        const ops = ["add","sub","mul","div"].filter(o => o !== task.op);
+        const wrongOps = shuffle(ops).slice(0,3);
+        const wrongs = wrongOps.map(o => textOnly[o][randInt(0, textOnly[o].length-1)]({a:task.a,b:task.b}));
+
+        const uniq = new Set([correct]);
+        const finalWrongs = [];
+        for (const w of wrongs){
+          if (!uniq.has(w)){ uniq.add(w); finalWrongs.push(w); }
+        }
+        while (finalWrongs.length < 3){
+          const o = ops[randInt(0, ops.length-1)];
+          const w = textOnly[o][randInt(0, textOnly[o].length-1)]({a:task.a,b:task.b});
+          if (!uniq.has(w)){ uniq.add(w); finalWrongs.push(w); }
+        }
+        return shuffle([{label:correct, ok:true}, ...finalWrongs.map(w => ({label:w, ok:false}))]);
+      }
+
+      const start = task.start;
+      const ops = task.steps.map(s => s.op);
+      const nums = task.steps.map(s => s.n);
+
+      const correct = task.text;
+
+      const allOps = ["add","sub","mul","div"];
+      const wrongSet = new Set([correct]);
+      const wrongs = [];
+
+      while (wrongs.length < 3){
+        const idx = randInt(0, ops.length-1);
+        const altOps = allOps.filter(o => o !== ops[idx]);
+        const newOp = altOps[randInt(0, altOps.length-1)];
+        const newOps = ops.slice();
+        newOps[idx] = newOp;
+
+        let v = start;
+        let ok = true;
+        for (let i=0;i<newOps.length;i++){
+          const st = { op:newOps[i], n: nums[i] };
+          if (st.op === "div" && (v % st.n !== 0)) { ok = false; break; }
+          v = applyStep(v, st);
+          if (!Number.isInteger(v) || v < MINV || v > MAXV) { ok = false; break; }
+        }
+        if (!ok) continue;
+
+        const cand = textFromTaskParts(start, newOps, nums);
+        if (!wrongSet.has(cand)){
+          wrongSet.add(cand);
+          wrongs.push(cand);
+        }
+      }
+
+      return shuffle([{label:correct, ok:true}, ...wrongs.map(w => ({label:w, ok:false}))]);
+    }
+
+    function renderChoices(choices){
+      const name = "mc";
+      elChoices.innerHTML = "";
+      choices.forEach((c, idx) => {
+        const id = `mc_${idx}_${Date.now()}`;
+        const row = document.createElement("label");
+        row.className = "choice";
+        row.setAttribute("for", id);
+        row.innerHTML = `
+          <input type="radio" id="${id}" name="${name}" value="${idx}" />
+          <span>${escapeHtml(c.label)}</span>
+        `;
+        row.dataset.ok = c.ok ? "1" : "0";
+        elChoices.appendChild(row);
+      });
+      const first = elChoices.querySelector('input[type="radio"]');
+      if (first) first.focus();
+    }
+
+    function renderTask(task){
+      clearStatus();
+      state.current = task;
+
+      areaA.classList.add("hidden");
+      areaMC.classList.add("hidden");
+      elTermLine.style.display = "none";
+
+      if (state.category === "a"){
+        elPromptText.textContent = task.text;
+        ansA.value = "";
+        areaA.classList.remove("hidden");
+        setTimeout(() => { ansA.focus(); ansA.select(); }, 30);
+        return;
+      }
+
+      if (state.category === "b"){
+        elPromptText.textContent = task.text; // text only
+        elTermLine.style.display = "block";
+        elTermLine.innerHTML = `<span class="muted">Term:</span> ____`;
+        areaMC.classList.remove("hidden");
+        renderChoices(makeTermChoicesForB(task));
+        return;
+      }
+
+      // c
+      elPromptText.textContent = task.term; // term prompt
+      areaMC.classList.remove("hidden");
+      renderChoices(makeTextChoicesForC(task));
+    }
+
+    function nextTask(){ renderTask(buildTask()); }
+
+    function finishCategory(){
+      progress[state.category].done = true;
+      updateBadges();
+      if (progress.a.done && progress.b.done && progress.c.done) sendAppSolved();
+      showMenu();
+    }
+
+    function correct(){
+      play(sfx.correct);
+      state.ok += 1;
+      updateGameStats();
+
+      if (state.ok >= GOAL){
+        setStatus("ok","Fertig ✅","Zurück ins Menü…");
+        state.lock = true;
+        setTimeout(() => { state.lock = false; finishCategory(); }, FEEDBACK_MS);
+      } else {
+        setStatus("ok","Richtig ✅",`${state.ok}/10`);
+        state.lock = true;
+        setTimeout(() => { state.lock = false; nextTask(); }, FEEDBACK_MS);
+      }
+    }
+
+    function wrong(detail){
+      play(sfx.error);
+      state.bad += 1;
+      updateGameStats();
+      setStatus("bad","Falsch ❌", detail);
+      state.lock = true;
+      setTimeout(() => { state.lock = false; }, FEEDBACK_MS);
+    }
+
+    function checkA(){
+      if (state.lock) return;
+      const task = state.current;
+      const raw = ansA.value;
+      const n = Number.parseInt(raw, 10);
+
+      if (!raw || Number.isNaN(n)){
+        wrong("Zahl eingeben.");
+        ansA.focus(); ansA.select();
+        return;
+      }
+
+      if (n === task.result){
+        correct();
+      } else {
+        wrong("Nochmal.");
+        ansA.focus(); ansA.select();
+      }
+    }
+
+    function getSelectedChoice(){
+      const sel = elChoices.querySelector('input[type="radio"]:checked');
+      if (!sel) return null;
+      const labelEl = sel.closest(".choice");
+      return { ok: labelEl?.dataset?.ok === "1" };
+    }
+
+    function checkMC(){
+      if (state.lock) return;
+      const task = state.current;
+      const sel = getSelectedChoice();
+      if (!sel){
+        wrong("Wähle eine Antwort.");
+        return;
+      }
+      if (sel.ok){
+        if (state.category === "b"){
+          elTermLine.innerHTML = `<span class="muted">Term:</span> ${escapeHtml(task.term)}`;
+        }
+        correct();
+      } else {
+        wrong("Nochmal.");
+      }
+    }
+
+    function startCategory(cat){
+      state.category = cat;
+      state.ok = 0;
+      state.bad = 0;
+      state.lock = false;
+      elCatName.textContent = catLabel(cat);
+      updateGameStats();
+      showGame();
+      nextTask();
+    }
+
+    btnCatA.addEventListener("click", () => startCategory("a"));
+    btnCatB.addEventListener("click", () => startCategory("b"));
+    btnCatC.addEventListener("click", () => startCategory("c"));
+
+    btnResetAll.addEventListener("click", () => {
+      progress.a.done = false;
+      progress.b.done = false;
+      progress.c.done = false;
+      updateBadges();
+    });
+
+    btnBackToMenu.addEventListener("click", () => showMenu());
+    btnCheckA.addEventListener("click", checkA);
+    ansA.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){ e.preventDefault(); checkA(); }
+    });
+    btnCheckMC.addEventListener("click", checkMC);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        if (game.classList.contains("hidden")) return;
+        if (state.category === "a"){ e.preventDefault(); checkA(); }
+        else { e.preventDefault(); checkMC(); }
+      }
+      if (e.key === "Escape"){
+        if (state.category === "a"){
+          ansA.value = "";
+          ansA.focus();
+        }
+      }
+    });
+
+    updateBadges();
+    showMenu();
+  </script>
+</body>
+</html>
