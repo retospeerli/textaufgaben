@@ -86,7 +86,6 @@
 
     .side h2{margin:0 0 10px;font-size:1.05rem}
     .side p{margin:8px 0;color:var(--muted);font-weight:900;line-height:1.35}
-    .hr{height:1px;background:var(--line);margin:12px 0}
 
     .hidden{display:none !important}
   </style>
@@ -328,10 +327,6 @@
       return [choice];
     }
 
-    // constraints:
-    // add/sub result >= 10
-    // mul/div within 1..10 and 10x table; no factor 0
-    // all results and intermediate results: 10..100 (keeps it not too easy + integer)
     const MINV = 10, MAXV = 100;
 
     function genAdd(){
@@ -401,7 +396,6 @@
       return { nums, result: target };
     }
 
-    // ---- Language (TEXT ONLY, no operator signs) ----
     const textOnly = {
       add: [
         ({a,b}) => `Addiere ${a} und ${b}.`,
@@ -426,18 +420,41 @@
       mul: [
         ({a,b}) => `Multipliziere ${a} mit ${b}.`,
         ({a,b}) => `Berechne das Produkt von ${a} und ${b}.`,
-        ({a,b}) => `Bestimme das Produkt von ${a} und ${b}.`,
         ({a,b}) => `Vervielfache ${a} mit ${b}.`,
         ({a,b}) => `Berechne ${a} mal ${b}.`
       ],
       div: [
         ({a,b}) => `Dividiere ${a} durch ${b}.`,
         ({a,b}) => `Berechne den Quotienten von ${a} und ${b}.`,
-        ({a,b}) => `Bestimme den Quotienten von ${a} und ${b}.`,
         ({a,b}) => `Teile ${a} durch ${b}.`,
         ({a,b}) => `Wie oft passt ${b} in ${a}?`
       ]
     };
+
+    const chainPhrases = {
+      start: [
+        s => `Rechne: ${s}`,
+        s => `Löse: ${s}`,
+        s => `${s}`,
+        s => `Berechne: ${s}`
+      ],
+      then: [
+        t => `, ${t}`,
+        t => `, und ${t}`,
+        t => `; ${t}`,
+        t => ` – ${t}`
+      ],
+      finalHint: [
+        () => ``,
+        () => ``,
+        () => ``,
+        () => ``
+      ]
+    };
+
+    function joinList(nums){
+      return nums.join(", ").replace(/, ([^,]*)$/, " und $1");
+    }
 
     const opSymbols = { add:"+", sub:"−", mul:"·", div:":" };
 
@@ -448,8 +465,6 @@
       return genDiv();
     }
 
-    // ---- Chained calculations ----
-    // chain = { start:number, steps:[{op, n}], result:number, term:string, text:string }
     function applyStep(v, step){
       if (step.op === "add") return v + step.n;
       if (step.op === "sub") return v - step.n;
@@ -475,15 +490,12 @@
         return { n, nv };
       }
       if (op === "mul"){
-        // Einmaleins & Zehnereinmaleins as factor
         const factors = [2,3,4,5,6,7,8,9,10];
         const f = factors[randInt(0, factors.length-1)];
         const nv = v * f;
         if (nv < MINV || nv > MAXV) return null;
         return { n:f, nv };
       }
-      // div
-      // divisor 2..10, must divide v, quotient within range
       const divisors = [2,3,4,5,6,7,8,9,10];
       const candidates = divisors.filter(d => v % d === 0);
       if (!candidates.length) return null;
@@ -501,79 +513,132 @@
       return expr;
     }
 
-    function sentenceForStep(prev, op, n, isFirst){
-      const variants = [];
+    // ---- Better, fluent chain text (short, varied, thought-provoking) ----
+    function stepText(op, prev, n, i){
+      const isFirst = i === 0;
+
       if (op === "add"){
-        variants.push(isFirst ? `Addiere ${n} zur Zahl ${prev}.` : `Addiere danach ${n}.`);
-        variants.push(isFirst ? `Zähle zur Zahl ${prev} die Zahl ${n} hinzu.` : `Zähle danach ${n} hinzu.`);
-        variants.push(isFirst ? `Erhöhe den Wert der Zahl ${prev} um ${n}.` : `Erhöhe danach um ${n}.`);
-        variants.push(isFirst ? `Berechne zuerst die Summe von ${prev} und ${n}.` : `Berechne danach die Summe mit ${n}.`);
-      } else if (op === "sub"){
-        variants.push(isFirst ? `Subtrahiere ${n} von ${prev}.` : `Subtrahiere danach ${n}.`);
-        variants.push(isFirst ? `Ziehe ${n} von ${prev} ab.` : `Ziehe danach ${n} ab.`);
-        variants.push(isFirst ? `Verringere ${prev} um ${n}.` : `Verringere danach um ${n}.`);
-        variants.push(isFirst ? `Berechne zuerst die Differenz von ${prev} und ${n}.` : `Berechne danach die Differenz mit ${n}.`);
-      } else if (op === "mul"){
-        variants.push(isFirst ? `Multipliziere ${prev} mit ${n}.` : `Multipliziere danach mit ${n}.`);
-        variants.push(isFirst ? `Vervielfache ${prev} mit ${n}.` : `Vervielfache danach mit ${n}.`);
-        variants.push(isFirst ? `Berechne zuerst das Produkt von ${prev} und ${n}.` : `Berechne danach das Produkt mit ${n}.`);
-        variants.push(isFirst ? `Berechne ${prev} mal ${n}.` : `Rechne danach mal ${n}.`);
-      } else { // div
-        variants.push(isFirst ? `Dividiere ${prev} durch ${n}.` : `Dividiere danach durch ${n}.`);
-        variants.push(isFirst ? `Teile ${prev} durch ${n}.` : `Teile danach durch ${n}.`);
-        variants.push(isFirst ? `Bestimme den Quotienten von ${prev} und ${n}.` : `Bestimme danach den Quotienten mit ${n}.`);
-        variants.push(isFirst ? `Wie oft passt ${n} in ${prev}?` : `Und danach: Wie oft passt ${n} hinein?`);
+        const v = [
+          () => `addiere ${n}`,
+          () => `zähle ${n} hinzu`,
+          () => `erhöhe um ${n}`,
+          () => `addiere danach ${n}`,
+          () => `rechne dann plus ${n}` // still no symbol, but "plus" ok
+        ];
+        if (isFirst){
+          const lead = [
+            () => `Addiere ${n} zur Zahl ${prev}`,
+            () => `Zähle zu ${prev} die Zahl ${n} hinzu`,
+            () => `Erhöhe ${prev} um ${n}`,
+            () => `Berechne die Summe von ${prev} und ${n}`
+          ];
+          return lead[randInt(0, lead.length-1)]();
+        }
+        const tail = [
+          () => `addiere dann ${n}`,
+          () => `zähle dann ${n} hinzu`,
+          () => `erhöhe danach um ${n}`,
+          () => `rechne danach ${n} dazu`
+        ];
+        return tail[randInt(0, tail.length-1)]();
       }
-      return variants[randInt(0, variants.length-1)];
+
+      if (op === "sub"){
+        if (isFirst){
+          const lead = [
+            () => `Subtrahiere ${n} von ${prev}`,
+            () => `Ziehe ${n} von ${prev} ab`,
+            () => `Verringere ${prev} um ${n}`,
+            () => `Berechne die Differenz von ${prev} und ${n}`
+          ];
+          return lead[randInt(0, lead.length-1)]();
+        }
+        const tail = [
+          () => `subtrahiere dann ${n}`,
+          () => `ziehe dann ${n} ab`,
+          () => `verringere danach um ${n}`,
+          () => `nimm danach ${n} weg`
+        ];
+        return tail[randInt(0, tail.length-1)]();
+      }
+
+      if (op === "mul"){
+        if (isFirst){
+          const lead = [
+            () => `Multipliziere ${prev} mit ${n}`,
+            () => `Berechne das Produkt von ${prev} und ${n}`,
+            () => `Vervielfache ${prev} mit ${n}`,
+            () => `Nimm ${prev} mal ${n}`
+          ];
+          return lead[randInt(0, lead.length-1)]();
+        }
+        const tail = [
+          () => `multipliziere dann mit ${n}`,
+          () => `multipliziere danach mit ${n}`,
+          () => `rechne danach mal ${n}`,
+          () => `vervielfache danach mit ${n}`
+        ];
+        return tail[randInt(0, tail.length-1)]();
+      }
+
+      // div
+      if (isFirst){
+        const lead = [
+          () => `Dividiere ${prev} durch ${n}`,
+          () => `Teile ${prev} durch ${n}`,
+          () => `Bestimme den Quotienten von ${prev} und ${n}`,
+          () => `Wie oft passt ${n} in ${prev}`
+        ];
+        return lead[randInt(0, lead.length-1)]();
+      }
+      const tail = [
+        () => `dividiere dann durch ${n}`,
+        () => `teile danach durch ${n}`,
+        () => `dividiere danach mit ${n}`,
+        () => `teile dann durch ${n}`
+      ];
+      return tail[randInt(0, tail.length-1)]();
     }
 
     function chainToText(start, steps){
-      // One-line or two-part wording, still purely text
-      const style = randInt(1,3);
-      if (style === 1){
-        const parts = [];
-        let prev = start;
-        for (let i=0;i<steps.length;i++){
-          const st = steps[i];
-          parts.push(sentenceForStep(prev, st.op, st.n, i===0));
-          prev = applyStep(prev, st);
-        }
-        return `Rechne Schritt für Schritt: ${parts.join(" ")}`;
-      }
-      if (style === 2){
-        const first = steps[0];
-        return `Starte mit ${start}. ${sentenceForStep(start, first.op, first.n, true)} ${steps.slice(1).map((st,idx)=>{
-          // after first, use "danach" sentences
-          return sentenceForStep(0, st.op, st.n, false);
-        }).join(" ")}`.replace(/\s+/g," ").trim();
-      }
-      // style 3: compact "Zuerst..., dann..., danach..."
-      const words = ["Zuerst", "Dann", "Danach"];
-      let txt = `Starte mit ${start}.`;
+      // 2..3 steps: output is one fluent sentence, sometimes with comma/and
+      const parts = [];
       let prev = start;
       for (let i=0;i<steps.length;i++){
         const st = steps[i];
-        const lead = words[Math.min(i, words.length-1)];
-        const v = (i===0)
-          ? sentenceForStep(prev, st.op, st.n, true)
-          : sentenceForStep(prev, st.op, st.n, false);
-        txt += ` ${lead}: ${v}`;
+        parts.push(stepText(st.op, prev, st.n, i));
         prev = applyStep(prev, st);
       }
-      return txt.replace(/\s+/g," ").trim();
+
+      // style variants for connectors
+      if (steps.length === 2){
+        const connectors = [
+          (a,b) => `${a}, ${b}.`,
+          (a,b) => `${a}, und ${b}.`,
+          (a,b) => `${a} – ${b}.`,
+          (a,b) => `${a}; ${b}.`
+        ];
+        return connectors[randInt(0, connectors.length-1)](parts[0], parts[1]);
+      }
+
+      // 3 steps
+      const styles = [
+        (p) => `${p[0]}, ${p[1]} und ${p[2]}.`,
+        (p) => `${p[0]}; ${p[1]}; ${p[2]}.`,
+        (p) => `${p[0]}, ${p[1]}, dann ${p[2]}.`,
+        (p) => `${p[0]} – ${p[1]} – ${p[2]}.`
+      ];
+      return styles[randInt(0, styles.length-1)](parts);
     }
 
     function genChain(opsAllowed){
-      // length 2..3
       const len = (Math.random() < 0.65) ? 2 : 3;
 
-      // choose a start that is "chain-friendly"
       let start = randInt(MINV, MAXV);
-      // help division: sometimes start as a multiple
       if (opsAllowed.includes("div") && Math.random() < 0.35){
         const base = randInt(2,10);
         const q = randInt(2,10);
-        start = base * q; // 4..100
+        start = base * q;
         if (start < MINV) start = MINV;
         if (start > MAXV) start = MAXV;
       }
@@ -584,44 +649,30 @@
       for (let i=0;i<len;i++){
         const op = opsAllowed[randInt(0, opsAllowed.length-1)];
         const pick = pickOperandForStep(v, op);
-        if (!pick) return genChain(opsAllowed); // retry
+        if (!pick) return genChain(opsAllowed);
         steps.push({ op, n: pick.n });
         v = pick.nv;
       }
 
-      const term = chainToTerm(start, steps);
-      const text = chainToText(start, steps);
       return {
         isChain: true,
+        op: "chain",
         start,
         steps,
-        term,
-        text,
+        term: chainToTerm(start, steps),
+        text: chainToText(start, steps),
         result: v
       };
     }
 
     function buildTask(){
       const opsAllowed = allowedOps();
-
-      // chain probability
-      const wantChain = Math.random() < 0.38;
+      const wantChain = Math.random() < 0.40;
 
       if (wantChain){
-        const chain = genChain(opsAllowed);
-        // For B/C we also need (a,b) style fields? not necessary; we use steps/numbers
-        return {
-          isChain: true,
-          op: "chain",
-          text: chain.text,
-          term: chain.term,
-          result: chain.result,
-          start: chain.start,
-          steps: chain.steps
-        };
+        return genChain(opsAllowed);
       }
 
-      // non-chain
       const op = pickOp();
 
       if (state.category === "a"){
@@ -652,7 +703,6 @@
     }
 
     function makeTermChoicesForB(task){
-      // works for chain and non-chain
       if (!task.isChain){
         const ops = ["add","sub","mul","div"].filter(o => o !== task.op);
         const wrongOps = shuffle(ops).slice(0,3);
@@ -677,7 +727,6 @@
         const newOps = ops.slice();
         newOps[idx] = newOp;
 
-        // quick validity check for integer intermediates + range
         let v = start;
         let ok = true;
         for (let i=0;i<newOps.length;i++){
@@ -698,14 +747,7 @@
       return shuffle([{label:correct, ok:true}, ...wrongs.map(w => ({label:w, ok:false}))]);
     }
 
-    function textFromTaskParts(start, ops, nums){
-      // build text but keep it deterministic-ish from parts
-      const steps = ops.map((op,i)=>({op, n: nums[i]}));
-      return chainToText(start, steps);
-    }
-
     function makeTextChoicesForC(task){
-      // for non-chain: reuse richer text variants but wrong op
       if (!task.isChain){
         const correct = textOnly[task.op][randInt(0, textOnly[task.op].length-1)]({a:task.a,b:task.b});
         const ops = ["add","sub","mul","div"].filter(o => o !== task.op);
@@ -725,11 +767,11 @@
         return shuffle([{label:correct, ok:true}, ...finalWrongs.map(w => ({label:w, ok:false}))]);
       }
 
+      const correct = task.text;
+
       const start = task.start;
       const ops = task.steps.map(s => s.op);
       const nums = task.steps.map(s => s.n);
-
-      const correct = task.text;
 
       const allOps = ["add","sub","mul","div"];
       const wrongSet = new Set([correct]);
@@ -752,7 +794,7 @@
         }
         if (!ok) continue;
 
-        const cand = textFromTaskParts(start, newOps, nums);
+        const cand = chainToText(start, newOps.map((op,i)=>({op, n: nums[i]})));
         if (!wrongSet.has(cand)){
           wrongSet.add(cand);
           wrongs.push(cand);
@@ -798,7 +840,7 @@
       }
 
       if (state.category === "b"){
-        elPromptText.textContent = task.text; // text only
+        elPromptText.textContent = task.text;
         elTermLine.style.display = "block";
         elTermLine.innerHTML = `<span class="muted">Term:</span> ____`;
         areaMC.classList.remove("hidden");
@@ -806,8 +848,7 @@
         return;
       }
 
-      // c
-      elPromptText.textContent = task.term; // term prompt
+      elPromptText.textContent = task.term;
       areaMC.classList.remove("hidden");
       renderChoices(makeTextChoicesForC(task));
     }
